@@ -1,37 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import ExcelJS from 'exceljs'
 import { prisma } from '@/lib/prisma'
 import { getCurrentPartner, requirePermission } from '@/lib/authz'
-import { assessmentInputSchema } from '@/lib/assessmentSchema'
-import { calculateBmi } from '@/lib/bmi'
 import { buildAssessmentWhere } from '@/lib/assessmentQuery'
-
-export async function POST(request: NextRequest) {
-  const partner = await getCurrentPartner()
-  if (!partner) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-  }
-
-  const body = await request.json()
-  const parsed = assessmentInputSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
-  }
-
-  const input = parsed.data
-  const bmi = input.bmi ?? calculateBmi(input.height ?? null, input.weight ?? null) ?? undefined
-
-  const assessment = await prisma.assessment.create({
-    data: {
-      ...input,
-      email: input.email || undefined,
-      date: new Date(input.date),
-      bmi,
-      handledByPartnerId: partner.id,
-    },
-  })
-
-  return NextResponse.json({ assessment }, { status: 201 })
-}
+import { toExportRow } from '@/lib/export'
 
 export async function GET(request: NextRequest) {
   const partner = await getCurrentPartner()
@@ -56,5 +28,19 @@ export async function GET(request: NextRequest) {
     orderBy: { date: 'desc' },
   })
 
-  return NextResponse.json({ assessments })
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Results')
+  const rows = assessments.map(toExportRow)
+  if (rows.length > 0) {
+    sheet.columns = Object.keys(rows[0]).map((key) => ({ header: key, key }))
+    sheet.addRows(rows)
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  return new NextResponse(buffer, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="wellness-results.xlsx"',
+    },
+  })
 }

@@ -11,6 +11,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
+  if (!requirePermission(partner, 'exportData')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const url = new URL(request.url)
   const where = buildAssessmentWhere(
     {

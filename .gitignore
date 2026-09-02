@@ -38,3 +38,6 @@ next-env.d.ts
 
 # superpowers scratch directory
 .superpowers/
+
+# claude code local scratch (browser automation launch config, etc.)
+.claude/

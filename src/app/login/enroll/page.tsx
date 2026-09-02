@@ -9,51 +9,73 @@ export default function EnrollPage() {
   const [secret, setSecret] = useState('')
   const [otpauthUrl, setOtpauthUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     fetch('/api/auth/mfa/enroll')
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) {
+          setError(data.error ?? 'Could not start MFA enrollment')
+          setLoadFailed(true)
+          return
+        }
         setSecret(data.secret)
         setOtpauthUrl(data.otpauthUrl)
+      })
+      .catch(() => {
+        setError('Could not reach the server. Check your connection and try again.')
+        setLoadFailed(true)
       })
   }, [])
 
   const onFinish = async (values: { token: string }) => {
     setError(null)
-    const res = await fetch('/api/auth/mfa/enroll', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret, token: values.token }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Invalid code')
-      return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/auth/mfa/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, token: values.token }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Invalid code')
+        return
+      }
+      router.push('/dashboard')
+    } finally {
+      setSubmitting(false)
     }
-    router.push('/dashboard')
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '10vh' }}>
-      <Card style={{ width: 400 }}>
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '10vh 16px 0' }}>
+      <Card style={{ width: 400, maxWidth: '100%' }}>
         <Typography.Title level={4}>Set up two-factor authentication</Typography.Title>
-        <Typography.Paragraph>
-          Scan this into an authenticator app, or enter the secret manually:
-        </Typography.Paragraph>
-        <Typography.Text code>{secret}</Typography.Text>
-        <Typography.Paragraph type="secondary" style={{ wordBreak: 'break-all', marginTop: 8 }}>
-          {otpauthUrl}
-        </Typography.Paragraph>
+        {!loadFailed && (
+          <>
+            <Typography.Paragraph>
+              Scan this into an authenticator app, or enter the secret manually:
+            </Typography.Paragraph>
+            <Typography.Text code>{secret}</Typography.Text>
+            <Typography.Paragraph type="secondary" style={{ wordBreak: 'break-all', marginTop: 8 }}>
+              {otpauthUrl}
+            </Typography.Paragraph>
+          </>
+        )}
         {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
-        <Form layout="vertical" onFinish={onFinish}>
-          <Form.Item name="token" label="6-digit code" rules={[{ required: true, len: 6 }]}>
-            <Input />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" block>
-            Verify and finish
-          </Button>
-        </Form>
+        {!loadFailed && (
+          <Form layout="vertical" onFinish={onFinish}>
+            <Form.Item name="token" label="6-digit code" rules={[{ required: true, len: 6 }]}>
+              <Input />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" block loading={submitting}>
+              Verify and finish
+            </Button>
+          </Form>
+        )}
       </Card>
     </div>
   )

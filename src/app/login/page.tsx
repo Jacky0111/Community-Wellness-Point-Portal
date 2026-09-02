@@ -7,30 +7,36 @@ import { Button, Card, Form, Input, Typography, Alert } from 'antd'
 export default function LoginPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const onFinish = async (values: { email: string; password: string }) => {
     setError(null)
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(values),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Login failed')
-      return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Login failed')
+        return
+      }
+      const routes: Record<string, string> = {
+        'change-password': '/login/change-password',
+        'mfa-enroll': '/login/enroll',
+        'mfa-verify': '/login/verify',
+      }
+      router.push(routes[data.nextStep] ?? '/dashboard')
+    } finally {
+      setSubmitting(false)
     }
-    const routes: Record<string, string> = {
-      'change-password': '/login/change-password',
-      'mfa-enroll': '/login/enroll',
-      'mfa-verify': '/login/verify',
-    }
-    router.push(routes[data.nextStep] ?? '/dashboard')
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '10vh' }}>
-      <Card style={{ width: 360 }}>
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '10vh 16px 0' }}>
+      <Card style={{ width: 360, maxWidth: '100%' }}>
         <Typography.Title level={3}>Community Wellness Point</Typography.Title>
         {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
         <Form layout="vertical" onFinish={onFinish}>
@@ -40,7 +46,7 @@ export default function LoginPage() {
           <Form.Item name="password" label="Password" rules={[{ required: true }]}>
             <Input.Password />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block>
+          <Button type="primary" htmlType="submit" block loading={submitting}>
             Log in
           </Button>
         </Form>

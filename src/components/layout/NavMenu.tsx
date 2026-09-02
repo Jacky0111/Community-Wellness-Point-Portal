@@ -3,6 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, Tooltip } from 'antd'
+import {
+  DashboardOutlined,
+  FileTextOutlined,
+  ScanOutlined,
+  SettingOutlined,
+} from '@ant-design/icons'
 import type { PermissionSet } from '@/lib/permissions'
 
 export interface NavMenuProps {
@@ -15,9 +21,10 @@ export function NavMenu({ permissions, onNavigate }: NavMenuProps) {
   const pathname = usePathname()
 
   const items = [
-    { key: '/dashboard', label: <Link href="/dashboard">Dashboard</Link> },
+    { key: '/dashboard', icon: <DashboardOutlined />, label: <Link href="/dashboard">Dashboard</Link> },
     {
       key: 'health-assessment',
+      icon: <FileTextOutlined />,
       label: 'Health Assessment',
       children: [
         { key: '/health-assessment/form', label: <Link href="/health-assessment/form">Form</Link> },
@@ -30,6 +37,7 @@ export function NavMenu({ permissions, onNavigate }: NavMenuProps) {
     },
     {
       key: 'skin-analysis',
+      icon: <ScanOutlined />,
       disabled: true,
       label: (
         <Tooltip title="Coming soon">
@@ -39,6 +47,7 @@ export function NavMenu({ permissions, onNavigate }: NavMenuProps) {
     },
     {
       key: 'settings',
+      icon: <SettingOutlined />,
       label: 'Settings',
       children: [
         { key: '/settings/profile', label: <Link href="/settings/profile">My Profile</Link> },
@@ -56,11 +65,13 @@ export function NavMenu({ permissions, onNavigate }: NavMenuProps) {
 
   return (
     <Menu
+      theme="dark"
       mode="inline"
       selectedKeys={[pathname]}
       defaultOpenKeys={['health-assessment', 'settings']}
       items={items}
       onClick={() => onNavigate?.()}
+      style={{ background: 'transparent', borderInlineEnd: 'none' }}
     />
   )
 }

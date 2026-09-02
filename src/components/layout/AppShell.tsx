@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { Layout, Grid, Drawer, Button } from 'antd'
-import { MenuOutlined } from '@ant-design/icons'
+import { MenuOutlined, HeartFilled, CloseOutlined } from '@ant-design/icons'
 import { NavMenu } from './NavMenu'
+import { AccountMenu } from './AccountMenu'
+import { BRAND } from '@/lib/theme'
 import type { PermissionSet } from '@/lib/permissions'
 
 const { Header, Sider, Content } = Layout
@@ -13,6 +15,75 @@ export interface AppShellProps {
   partnerName: string
   permissions: Partial<PermissionSet>
   children: React.ReactNode
+}
+
+const sidebarGradient = `linear-gradient(180deg, ${BRAND.sidebarFrom} 0%, ${BRAND.sidebarTo} 100%)`
+
+/**
+ * Shared sidebar contents (logo lockup, nav menu, bottom tagline card) so the
+ * desktop `Sider` and mobile `Drawer` branches stay visually identical instead
+ * of drifting when only one gets updated.
+ */
+function SidebarContent({
+  permissions,
+  onNavigate,
+}: {
+  permissions: Partial<PermissionSet>
+  onNavigate?: () => void
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '20px 16px' }}>
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            flexShrink: 0,
+            borderRadius: 8,
+            background: 'rgba(255, 255, 255, 0.18)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <HeartFilled style={{ color: '#fff', fontSize: 16 }} />
+        </div>
+        <span
+          style={{
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: 15,
+            lineHeight: 1.2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Community Wellness Point
+        </span>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <NavMenu permissions={permissions} onNavigate={onNavigate} />
+      </div>
+
+      <div style={{ padding: 16 }}>
+        <div
+          style={{
+            borderRadius: BRAND.cardRadius,
+            background: 'rgba(255, 255, 255, 0.12)',
+            padding: 12,
+            color: '#fff',
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: 13 }}>Community Wellness Point</div>
+          <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.75)', marginTop: 2 }}>
+            Your Health, Our Priority
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function AppShell({ partnerName, permissions, children }: AppShellProps) {
@@ -40,14 +111,20 @@ export function AppShell({ partnerName, permissions, children }: AppShellProps) 
           placement="left"
           open={drawerOpen}
           onClose={closeDrawer}
-          styles={{ body: { padding: 0 } }}
+          width={272}
+          closeIcon={<CloseOutlined style={{ color: '#fff' }} />}
+          styles={{
+            body: { padding: 0, background: sidebarGradient },
+            header: { background: sidebarGradient, borderBottom: 'none' },
+            content: { background: sidebarGradient },
+          }}
         >
-          <NavMenu permissions={permissions} onNavigate={closeDrawer} />
+          <SidebarContent permissions={permissions} onNavigate={closeDrawer} />
         </Drawer>
       )}
       {mounted && !isMobile && (
-        <Sider width={240}>
-          <NavMenu permissions={permissions} />
+        <Sider width={240} style={{ background: sidebarGradient }}>
+          <SidebarContent permissions={permissions} />
         </Sider>
       )}
       <Layout>
@@ -57,6 +134,7 @@ export function AppShell({ partnerName, permissions, children }: AppShellProps) 
             alignItems: 'center',
             justifyContent: 'space-between',
             background: '#fff',
+            borderBottom: '1px solid #F0F0F0',
             gap: 12,
             paddingInline: 16,
           }}
@@ -76,17 +154,17 @@ export function AppShell({ partnerName, permissions, children }: AppShellProps) 
               Community Wellness Point
             </span>
           </span>
-          <span
+          <div
             style={{
+              display: 'flex',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
               maxWidth: '40%',
-              flexShrink: 0,
+              flexShrink: 1,
+              minWidth: 0,
             }}
           >
-            {partnerName}
-          </span>
+            <AccountMenu partnerName={partnerName} />
+          </div>
         </Header>
         <Content style={{ padding: 24, overflowX: 'auto', minWidth: 0 }}>{children}</Content>
       </Layout>

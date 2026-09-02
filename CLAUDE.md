@@ -72,3 +72,18 @@ is designed separately. Bulk Excel export of filtered Results *is* in scope for 
   serverless/concurrent load.
 - Don't import password-hashing code (bcrypt) into anything on the Edge middleware's
   import graph — bcryptjs needs Node APIs unavailable in a real Edge runtime.
+- **CWP-specific, not from Bluestorm:** `antd@5.x` requires `@ant-design/cssinjs@^1.x`
+  internally, but `@ant-design/nextjs-registry@1.3.0+` was built and tested against
+  `antd@^6.0.0` / `@ant-design/cssinjs@^2.x`. If both end up resolving to different
+  major versions of `@ant-design/cssinjs` (check with `npm ls @ant-design/cssinjs` —
+  it should show one deduped version, not a nested copy under `antd/node_modules`),
+  `AntdRegistry`'s SSR style extraction silently breaks: every component still gets
+  its correct `ant-*`/`css-dev-only-do-not-override-*` classes, but **zero `<style>`
+  tags are ever injected**, so the whole app renders with plain unstyled browser
+  defaults instead of Ant Design's (or a custom `ConfigProvider` theme's) styling —
+  with no error, warning, or console output anywhere. That silent, classes-present-
+  but-nothing-styled symptom is the fast way to recognize this specific bug over any
+  other "my AntD styling isn't showing up" cause. Fix: keep
+  `@ant-design/nextjs-registry` pinned to `^1.2.0` (the last release actually built
+  against `antd@^5.12.5` / `@ant-design/cssinjs@^1.24.0` — this project's stack), not
+  `^1.3.0`+, until upgrading to `antd` v6.

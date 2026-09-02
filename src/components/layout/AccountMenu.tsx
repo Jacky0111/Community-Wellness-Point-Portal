@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Avatar, Dropdown, Space } from 'antd'
+import { Avatar, Dropdown } from 'antd'
 import { DownOutlined, UserOutlined, LogoutOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -50,30 +50,53 @@ export function AccountMenu({ partnerName }: AccountMenuProps) {
 
   return (
     <Dropdown menu={{ items }} trigger={['click']} disabled={loggingOut}>
-      <Space
+      {/*
+        Deliberately a plain flex div, not AntD's <Space>: Space wraps each child in
+        its own `.ant-space-item` div that doesn't inherit `min-width: 0`, so a flex
+        item never shrinks below its content's intrinsic width — the ellipsis on the
+        label span below would never actually trigger, and the row would instead get
+        hard-clipped by the header's outer `overflow: hidden` with no "…" marker. A
+        plain div under our own control lets `min-width: 0` reach the label so it
+        truncates properly, and the label is fully hidden below 420px so only the
+        avatar + chevron remain (still enough to open the dropdown) rather than
+        showing an unreadably short fragment of the name.
+      */}
+      <div
+        className="account-menu-trigger"
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
           cursor: 'pointer',
           overflow: 'hidden',
           minWidth: 0,
           maxWidth: '100%',
         }}
-        align="center"
       >
         <Avatar size="small" style={{ backgroundColor: '#2563EB', flexShrink: 0 }}>
           {initialsFor(partnerName)}
         </Avatar>
         <span
+          className="account-menu-label"
           style={{
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
             minWidth: 0,
+            flex: '1 1 auto',
           }}
         >
           Hello, {partnerName}
         </span>
         <DownOutlined style={{ fontSize: 10, flexShrink: 0 }} />
-      </Space>
+        <style>{`
+          @media (max-width: 420px) {
+            .account-menu-label {
+              display: none;
+            }
+          }
+        `}</style>
+      </div>
     </Dropdown>
   )
 }

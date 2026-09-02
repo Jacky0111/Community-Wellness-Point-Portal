@@ -48,15 +48,22 @@ function SidebarContent({
         >
           <HeartFilled style={{ color: '#fff', fontSize: 16 }} />
         </div>
+        {/*
+          Two lines instead of a single truncated line: at the sider's 240px width,
+          "Community Wellness Point" at a legible weight/size doesn't fit on one line
+          without an ellipsis eating half the wordmark ("Community Wellness..."),
+          which reads as broken rather than deliberate. Wrapping is a full fix here
+          (unlike the header's account label, there's no tighter-space case to also
+          cover), so it's preferred over truncation.
+        */}
         <span
           style={{
             color: '#fff',
             fontWeight: 600,
-            fontSize: 15,
-            lineHeight: 1.2,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            fontSize: 14,
+            lineHeight: 1.3,
+            flex: '1 1 auto',
+            minWidth: 0,
           }}
         >
           Community Wellness Point

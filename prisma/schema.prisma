@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  permissions     Json
+  isSystemDefault Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  partners BrandPartner[]
+}
+
+model BrandPartner {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  passwordHash       String
+  mustChangePassword Boolean   @default(true)
+  totpSecretEnc      String?
+  totpEnabledAt      DateTime?
+  isActive           Boolean   @default(true)
+  roleId             String
+  role               Role      @relation(fields: [roleId], references: [id])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  assessments Assessment[] @relation("HandledByPartner")
+
+  @@index([roleId])
+}
+
+model Assessment {
+  id                 String       @id @default(cuid())
+  email              String?
+  date               DateTime
+  name               String
+  contactNumber      String
+  age                Int?
+  height             Float?
+  weight             Float?
+  bodyFatPercent     Float?
+  visceralFatLevel   Float?
+  bmi                Float?
+  restingMetabolism  Float?
+  bodyAge            Int?
+  systolicBp         Int?
+  diastolicBp        Int?
+  bloodGlucose       Float?
+  remarks            String?
+  handledByPartnerId String
+  handledByPartner   BrandPartner @relation("HandledByPartner", fields: [handledByPartnerId], references: [id])
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @default(now()) @updatedAt
+
+  @@index([name])
+  @@index([contactNumber])
+  @@index([date])
+  @@index([handledByPartnerId])
+}

@@ -3515,3 +3515,29 @@ Once all tasks above pass regression:
 2. Set `SESSION_SECRET` (32+ random characters) in both Vercel and local `.env`.
 3. Run `npx prisma db push && npx prisma db seed` once against the Supabase database to create tables and the initial Owner account, then immediately log in and change that seeded password.
 4. Connect the repository to Vercel; the existing `npm run build` script (`prisma generate && next build`) requires no additional Vercel configuration.
+
+---
+
+## Plan amendment — 2026-09-03 (after Task 14 checkpoint)
+
+The project owner reviewed a Dashboard design mockup and confirmed the following. These
+decisions are binding on all remaining tasks:
+
+- The mockup is **visual direction only**. Sections it showed that were never specced —
+  Appointments, Reports, Resources — are **out of scope** and must not be built.
+- **No `Client` entity.** Client identity stays denormalized as `name` / `contactNumber` /
+  `email` on `Assessment`. The owner explicitly declined a Client model.
+- **Skin Analysis remains phase 2** — disabled, "Coming soon", no route or schema.
+- **No health score.** No composite `78/100` value and no Good/Average/Needs Attention
+  badge. Show raw measurements; an out-of-range flag may derive from Task 18's
+  `MEASUREMENT_RANGES`, but nothing may invent clinical judgement.
+- Navigation hierarchy, data model, auth, permissions and the assessment form are
+  **unchanged** — no structural refactor is required.
+
+**New Task 14A (brand theme and app-shell restyle)** is inserted between Task 14 and
+Task 15, so the remaining pages are built in the new visual language instead of being
+restyled afterwards. Its brief lives at
+`.superpowers/sdd/2026-09-03-community-wellness-point-mvp/task-14A-brief.md`.
+
+Tasks 15-24 are otherwise unchanged, with one addition: each page task should use the
+brand tokens from `src/lib/theme.ts` and card-based surfaces consistent with Task 14A.

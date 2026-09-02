@@ -30,6 +30,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No pending login session' }, { status: 401 })
   }
 
+  const partner = await prisma.brandPartner.findUnique({ where: { id: session.pendingPartnerId } })
+  if (!partner || partner.totpEnabledAt) {
+    return NextResponse.json({ error: 'Already enrolled' }, { status: 409 })
+  }
+
   const { secret, token } = await request.json()
   const { valid } = await verify({ token, secret })
   if (!valid) {

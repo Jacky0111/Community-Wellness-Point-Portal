@@ -67,9 +67,11 @@ is designed separately. Bulk Excel export of filtered Results *is* in scope for 
 - Next.js's env loader expands `$` in `.env` values as variable references — escape any
   literal `$` in secrets (e.g. a DB password) as `\$`. Doesn't apply to Vercel's
   dashboard env vars, only to `.env` files.
-- Use Supabase's Supavisor pooler (`:6543`, `?pgbouncer=true`) for production
-  `DATABASE_URL` — the direct connection (`:5432`) exhausts Postgres connections under
-  serverless/concurrent load.
+- Use Supabase's Supavisor pooler (`:6543`) for production `DATABASE_URL` — the direct
+  connection (`:5432`) exhausts Postgres connections under serverless/concurrent load.
+  The `?pgbouncer=true` query flag some Supabase docs add alongside it is interpreted by
+  Prisma's own query engine; under Prisma 7 with `@prisma/adapter-pg`, the connection
+  string goes to node-postgres instead, which ignores that flag, so it can be omitted.
 - Don't import password-hashing code (bcrypt) into anything on the Edge middleware's
   import graph — bcryptjs needs Node APIs unavailable in a real Edge runtime.
 - **CWP-specific, not from Bluestorm:** `antd@5.x` requires `@ant-design/cssinjs@^1.x`

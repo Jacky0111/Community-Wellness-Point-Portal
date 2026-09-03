@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Steps, Form, Input, InputNumber, DatePicker, Button, Alert, Space } from 'antd'
 import dayjs from 'dayjs'
 import { steps } from './fieldConfig'
+import { redirectIfUnauthorized } from '@/lib/clientAuth'
 
 export function AssessmentWizard() {
   const router = useRouter()
@@ -44,6 +45,7 @@ export function AssessmentWizard() {
         body: JSON.stringify(payload),
       })
 
+      if (redirectIfUnauthorized(res, router)) return
       if (!res.ok) {
         setError('Could not save this assessment. Please check the fields and try again.')
         return

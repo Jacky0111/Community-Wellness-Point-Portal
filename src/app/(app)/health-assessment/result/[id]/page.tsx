@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { Card, Descriptions, Button, Tooltip, Skeleton } from 'antd'
+import { useParams, useRouter } from 'next/navigation'
+import { Alert, Card, Descriptions, Button, Tooltip, Skeleton } from 'antd'
 import { BRAND } from '@/lib/theme'
+import { redirectIfUnauthorized } from '@/lib/clientAuth'
 
 interface AssessmentDetail {
   name: string
@@ -23,15 +24,62 @@ interface AssessmentDetail {
 
 export default function ResultDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const router = useRouter()
   const [assessment, setAssessment] = useState<AssessmentDetail | null>(null)
+  const [error, setError] = useState<'not-found' | 'unknown' | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/assessments/${id}`)
-      .then((res) => res.json())
-      .then((data) => setAssessment(data.assessment))
-  }, [id])
+    let cancelled = false
 
-  if (!assessment) return <Skeleton active />
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(`/api/assessments/${id}`)
+        if (redirectIfUnauthorized(res, router)) return
+        if (!res.ok) {
+          if (!cancelled) setError(res.status === 404 ? 'not-found' : 'unknown')
+          return
+        }
+        const data = await res.json()
+        if (!cancelled) setAssessment(data.assessment)
+      } catch {
+        if (!cancelled) setError('unknown')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [id, router])
+
+  if (error === 'not-found') {
+    return (
+      <Alert
+        type="error"
+        showIcon
+        message="Assessment not found"
+        description="This record doesn't exist, or you don't have permission to view it."
+      />
+    )
+  }
+
+  if (error === 'unknown') {
+    return (
+      <Alert
+        type="error"
+        showIcon
+        message="Couldn't load this assessment"
+        description="Something went wrong fetching this record. Please refresh the page to try again."
+      />
+    )
+  }
+
+  if (loading || !assessment) return <Skeleton active />
 
   return (
     <Card

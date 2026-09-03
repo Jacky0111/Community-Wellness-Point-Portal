@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Table, Button, Modal, Form, Input, Select, Space, Alert, Typography } from 'antd'
+import { redirectIfUnauthorized } from '@/lib/clientAuth'
 
 interface RoleOption {
   id: string
@@ -17,6 +19,7 @@ interface PartnerRow {
 }
 
 export function PartnersPanel() {
+  const router = useRouter()
   const [partners, setPartners] = useState<PartnerRow[]>([])
   const [roles, setRoles] = useState<RoleOption[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,11 +41,17 @@ export function PartnersPanel() {
     setLoading(true)
     return Promise.all([
       fetch('/api/partners')
-        .then((res) => res.json())
-        .then((data) => setPartners(data.partners ?? [])),
+        .then((res) => {
+          if (redirectIfUnauthorized(res, router)) return null
+          return res.json()
+        })
+        .then((data) => data && setPartners(data.partners ?? [])),
       fetch('/api/roles')
-        .then((res) => res.json())
-        .then((data) => setRoles(data.roles ?? [])),
+        .then((res) => {
+          if (redirectIfUnauthorized(res, router)) return null
+          return res.json()
+        })
+        .then((data) => data && setRoles(data.roles ?? [])),
     ]).finally(() => setLoading(false))
   }
 
@@ -66,6 +75,7 @@ export function PartnersPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       })
+      if (redirectIfUnauthorized(res, router)) return
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setSubmitError(typeof data.error === 'string' ? data.error : 'Could not invite brand partner')
@@ -86,6 +96,7 @@ export function PartnersPanel() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isActive: !partner.isActive }),
     })
+    if (redirectIfUnauthorized(res, router)) return
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       setToggleError(typeof data.error === 'string' ? data.error : 'Could not update brand partner')

@@ -6,6 +6,7 @@ import { Table, Button, Card, Space, Tooltip } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
 import { ResultsFilters, type ResultsFilterValue } from './ResultsFilters'
 import { BRAND } from '@/lib/theme'
+import { redirectIfUnauthorized } from '@/lib/clientAuth'
 
 interface AssessmentRow {
   id: string
@@ -58,9 +59,12 @@ export function ResultsTable({ canExport }: ResultsTableProps) {
     let ignore = false
     setLoading(true)
     fetch(`/api/assessments?${queryString}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (redirectIfUnauthorized(res, router)) return null
+        return res.json()
+      })
       .then((data) => {
-        if (!ignore) setRows(data.assessments ?? [])
+        if (!ignore && data) setRows(data.assessments ?? [])
       })
       .finally(() => {
         if (!ignore) setLoading(false)

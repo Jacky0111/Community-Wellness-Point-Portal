@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Table, Button, Modal, Form, Input, Checkbox, Space, Alert, Tooltip } from 'antd'
 import { PERMISSION_KEYS, type PermissionKey } from '@/lib/permissions'
+import { redirectIfUnauthorized } from '@/lib/clientAuth'
 
 interface RoleRow {
   id: string
@@ -26,6 +28,7 @@ const PERMISSION_LABELS: Record<PermissionKey, string> = {
 }
 
 export function RolesPanel() {
+  const router = useRouter()
   const [roles, setRoles] = useState<RoleRow[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<RoleRow | null>(null)
@@ -37,8 +40,11 @@ export function RolesPanel() {
   const load = () => {
     setLoading(true)
     return fetch('/api/roles')
-      .then((res) => res.json())
-      .then((data) => setRoles(data.roles ?? []))
+      .then((res) => {
+        if (redirectIfUnauthorized(res, router)) return null
+        return res.json()
+      })
+      .then((data) => data && setRoles(data.roles ?? []))
       .finally(() => setLoading(false))
   }
 
@@ -73,6 +79,7 @@ export function RolesPanel() {
         headers: { 'Content-Type': 'application/json' },
         body,
       })
+      if (redirectIfUnauthorized(res, router)) return
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setSubmitError(typeof data.error === 'string' ? data.error : 'Could not save role')
@@ -90,6 +97,7 @@ export function RolesPanel() {
   const onDelete = async (role: RoleRow) => {
     setDeleteError(null)
     const res = await fetch(`/api/roles/${role.id}`, { method: 'DELETE' })
+    if (redirectIfUnauthorized(res, router)) return
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       setDeleteError(typeof data.error === 'string' ? data.error : 'Could not delete role')

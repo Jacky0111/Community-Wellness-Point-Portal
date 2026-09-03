@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Alert, Button, Card, Skeleton, Space } from 'antd'
 import { PlusOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import { StatCards } from '@/components/dashboard/StatCards'
 import { RecentActivityList, type RecentAssessment } from '@/components/dashboard/RecentActivityList'
+import { redirectIfUnauthorized } from '@/lib/clientAuth'
 
 interface DashboardData {
   counts: { total: number; thisWeek: number; thisMonth: number }
@@ -13,6 +15,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -25,6 +28,7 @@ export default function DashboardPage() {
       setError(false)
       try {
         const res = await fetch('/api/dashboard/stats')
+        if (redirectIfUnauthorized(res, router)) return
         if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
         const json = (await res.json()) as DashboardData
         if (!cancelled) setData(json)
@@ -39,7 +43,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [router])
 
   if (error) {
     return (

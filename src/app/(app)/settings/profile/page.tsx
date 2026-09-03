@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, Form, Input, Button, Alert, message } from 'antd'
 import { BRAND } from '@/lib/theme'
+import { redirectIfUnauthorized } from '@/lib/clientAuth'
 
 export default function ProfilePage() {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [form] = Form.useForm()
@@ -18,6 +21,7 @@ export default function ProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       })
+      if (redirectIfUnauthorized(res, router)) return
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(typeof data.error === 'string' ? data.error : 'Could not update password')

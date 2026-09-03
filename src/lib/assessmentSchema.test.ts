@@ -27,6 +27,15 @@ describe('assessmentInputSchema', () => {
     expect(result.success).toBe(false)
   })
 
+  it('rejects a malformed date string', () => {
+    const result = assessmentInputSchema.safeParse({
+      date: 'tomorrow',
+      name: 'Jane Doe',
+      contactNumber: '+60123456789',
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('accepts optional numeric fields when present', () => {
     const result = assessmentInputSchema.safeParse({
       date: '2026-09-03',

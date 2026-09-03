@@ -9,10 +9,17 @@ export async function getCurrentPartner(): Promise<PartnerWithRole | null> {
   const session = await getSession()
   if (!session.partnerId) return null
 
-  return prisma.brandPartner.findUnique({
+  const partner = await prisma.brandPartner.findUnique({
     where: { id: session.partnerId },
     include: { role: true },
   })
+
+  // A deactivated partner's session cookie must stop working immediately,
+  // not just at their next login — otherwise deactivating someone who is
+  // currently logged in has no effect until their cookie expires on its own.
+  if (!partner || !partner.isActive) return null
+
+  return partner
 }
 
 export function requirePermission(

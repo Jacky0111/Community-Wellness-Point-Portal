@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Avatar, Dropdown } from 'antd'
 import { DownOutlined, UserOutlined, LogoutOutlined } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
+import { BRAND } from '@/lib/theme'
 
 export interface AccountMenuProps {
   partnerName: string
@@ -73,7 +74,7 @@ export function AccountMenu({ partnerName }: AccountMenuProps) {
           maxWidth: '100%',
         }}
       >
-        <Avatar size="small" style={{ backgroundColor: '#2563EB', flexShrink: 0 }}>
+        <Avatar size="small" style={{ backgroundColor: BRAND.primary, flexShrink: 0 }}>
           {initialsFor(partnerName)}
         </Avatar>
         <span

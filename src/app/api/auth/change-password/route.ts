@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { hashPassword } from '@/lib/password'
 import { resolveNextLoginStep } from '@/lib/authFlow'
 import { getSession } from '@/lib/session'
+
+const changePasswordSchema = z.object({
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+})
 
 export async function POST(request: NextRequest) {
   const session = await getSession()
@@ -32,8 +37,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Password change is not required' }, { status: 409 })
   }
 
-  const { newPassword } = await request.json()
-  const passwordHash = await hashPassword(newPassword)
+  const parsed = changePasswordSchema.safeParse(await request.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const passwordHash = await hashPassword(parsed.data.newPassword)
 
   // Uses targetId, not partner.id, to update the partner whose password is
   // actually being changed — this route never touches session.partnerId or

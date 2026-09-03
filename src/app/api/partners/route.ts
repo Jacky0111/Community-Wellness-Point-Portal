@@ -5,23 +5,7 @@ import { getCurrentPartner, requirePermission } from '@/lib/authz'
 import { partnerInputSchema } from '@/lib/partnerSchema'
 import { hashPassword } from '@/lib/password'
 import { randomBytes } from 'crypto'
-
-// Explicit select: never return passwordHash, totpSecretEnc, or other secret
-// fields to the client. Prisma's default `include: { role: true }` would
-// return every scalar column on BrandPartner, which includes the password
-// hash and encrypted TOTP secret — those must never leave the server.
-const PARTNER_SAFE_SELECT = {
-  id: true,
-  email: true,
-  name: true,
-  mustChangePassword: true,
-  totpEnabledAt: true,
-  isActive: true,
-  roleId: true,
-  role: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.BrandPartnerSelect
+import { PARTNER_SAFE_SELECT } from '@/lib/partnerSelect'
 
 export async function GET() {
   const partner = await getCurrentPartner()

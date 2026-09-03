@@ -2,7 +2,12 @@ import { z } from 'zod'
 
 export const assessmentInputSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
-  date: z.string().min(1, 'Date is required'),
+  // Kept as a string, not z.date(): the API route parses this as
+  // `new Date(input.date)`, relying on the YYYY-MM-DD shape to be interpreted
+  // as UTC midnight. The regex just rejects non-conforming values (e.g.
+  // "tomorrow") before they reach `new Date()`, which would otherwise produce
+  // an Invalid Date that Prisma throws on.
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   name: z.string().min(1, 'Name is required'),
   contactNumber: z.string().min(1, 'Contact number is required'),
   age: z.number().int().positive().optional(),

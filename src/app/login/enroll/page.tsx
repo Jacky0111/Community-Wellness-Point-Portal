@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Card, Form, Input, Typography, Alert } from 'antd'
+import { QRCodeSVG } from 'qrcode.react'
 
 export default function EnrollPage() {
   const router = useRouter()
@@ -59,6 +60,13 @@ export default function EnrollPage() {
             <Typography.Paragraph>
               Scan this into an authenticator app, or enter the secret manually:
             </Typography.Paragraph>
+            {otpauthUrl && (
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
+                <div style={{ padding: 16, background: '#fff', border: '1px solid #f0f0f0', borderRadius: 8 }}>
+                  <QRCodeSVG value={otpauthUrl} size={200} />
+                </div>
+              </div>
+            )}
             <Typography.Text code>{secret}</Typography.Text>
             <Typography.Paragraph type="secondary" style={{ wordBreak: 'break-all', marginTop: 8 }}>
               {otpauthUrl}

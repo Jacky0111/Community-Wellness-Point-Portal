@@ -51,11 +51,23 @@ export function ResultsTable({ canExport }: ResultsTableProps) {
   }, [debouncedSearch, filters.dateRange])
 
   useEffect(() => {
+    // Guards against out-of-order responses: if the filters change again before
+    // this request resolves, `ignore` is flipped in the cleanup so the stale
+    // response can no longer overwrite state with results for filters that no
+    // longer apply. Loading is only cleared by the request that actually wins.
+    let ignore = false
     setLoading(true)
     fetch(`/api/assessments?${queryString}`)
       .then((res) => res.json())
-      .then((data) => setRows(data.assessments ?? []))
-      .finally(() => setLoading(false))
+      .then((data) => {
+        if (!ignore) setRows(data.assessments ?? [])
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
   }, [queryString])
 
   const exportButton = (

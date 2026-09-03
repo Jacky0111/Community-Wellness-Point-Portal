@@ -68,9 +68,6 @@ export default function EnrollPage() {
               </div>
             )}
             <Typography.Text code>{secret}</Typography.Text>
-            <Typography.Paragraph type="secondary" style={{ wordBreak: 'break-all', marginTop: 8 }}>
-              {otpauthUrl}
-            </Typography.Paragraph>
           </>
         )}
         {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}

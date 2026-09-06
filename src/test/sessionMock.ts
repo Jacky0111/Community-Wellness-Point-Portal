@@ -8,6 +8,7 @@ import { vi } from 'vitest'
 interface MockSessionState {
   partnerId?: string
   pendingPartnerId?: string
+  pendingTotpSecret?: string
 }
 
 // A single mutable object, not a `let` binding that gets reassigned — route
@@ -36,6 +37,7 @@ export const getSession = vi.fn(async () => {
   session.destroy = () => {
     delete state.partnerId
     delete state.pendingPartnerId
+    delete state.pendingTotpSecret
   }
   return session
 })

@@ -38,7 +38,7 @@ export default function EnrollPage() {
       const res = await fetch('/api/auth/mfa/enroll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret, token: values.token }),
+        body: JSON.stringify({ token: values.token }),
       })
       const data = await res.json()
       if (!res.ok) {

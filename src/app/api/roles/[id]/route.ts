@@ -28,6 +28,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
+  // Self-lockout guard: an admin editing their own role must not be able to
+  // strip their own manageRoles permission, or nobody could administer the
+  // app afterward. Editing someone else's role is intentionally not covered
+  // here — that's a separate, out-of-scope concern.
+  if (params.id === partner.roleId && parsed.data.permissions.manageRoles !== true) {
+    return NextResponse.json(
+      { error: 'You cannot remove your own ability to manage roles' },
+      { status: 409 }
+    )
+  }
+
   try {
     const updated = await prisma.role.update({ where: { id: role.id }, data: parsed.data })
     return NextResponse.json({ role: updated })

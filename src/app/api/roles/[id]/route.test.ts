@@ -56,6 +56,57 @@ describe('permission gates on /api/roles/[id]', () => {
   })
 })
 
+describe('self-lockout protection on manageRoles', () => {
+  it('PATCH: editing own role to remove manageRoles returns 409 and leaves permissions unchanged', async () => {
+    const ownRole = await createRole({ permissions: { manageRoles: true, exportData: true } })
+    const admin = await createPartner({ roleId: ownRole.id })
+    setSessionPartner(admin.id)
+
+    const res = await patch(ownRole.id, {
+      name: ownRole.name,
+      permissions: { manageRoles: false, exportData: true },
+    })
+    expect(res.status).toBe(409)
+
+    const stillThere = await prisma.role.findUnique({ where: { id: ownRole.id } })
+    expect(stillThere!.permissions).toEqual(
+      expect.objectContaining({ manageRoles: true, exportData: true })
+    )
+  })
+
+  it('PATCH: editing own role while keeping manageRoles true succeeds', async () => {
+    const ownRole = await createRole({ permissions: { manageRoles: true } })
+    const admin = await createPartner({ roleId: ownRole.id })
+    setSessionPartner(admin.id)
+
+    const res = await patch(ownRole.id, {
+      name: 'Renamed Self Role',
+      permissions: { manageRoles: true, exportData: true },
+    })
+    expect(res.status).toBe(200)
+
+    const updated = await prisma.role.findUnique({ where: { id: ownRole.id } })
+    expect(updated!.name).toBe('Renamed Self Role')
+    expect((updated!.permissions as { manageRoles: boolean }).manageRoles).toBe(true)
+  })
+
+  it('PATCH: editing another role to remove manageRoles still succeeds (guard is scoped to own role)', async () => {
+    const ownRole = await createRole({ permissions: { manageRoles: true } })
+    const admin = await createPartner({ roleId: ownRole.id })
+    const otherRole = await createRole({ permissions: { manageRoles: true } })
+    setSessionPartner(admin.id)
+
+    const res = await patch(otherRole.id, {
+      name: otherRole.name,
+      permissions: { manageRoles: false },
+    })
+    expect(res.status).toBe(200)
+
+    const updated = await prisma.role.findUnique({ where: { id: otherRole.id } })
+    expect((updated!.permissions as { manageRoles: boolean }).manageRoles).toBe(false)
+  })
+})
+
 describe('system-default role protection', () => {
   it('PATCH returns 409 and leaves the role untouched', async () => {
     const manageRole = await createRole({ permissions: { manageRoles: true } })

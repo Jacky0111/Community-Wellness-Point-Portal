@@ -4,6 +4,7 @@ import { getIronSession, type IronSession, type SessionOptions } from 'iron-sess
 export interface SessionData {
   partnerId?: string
   pendingPartnerId?: string
+  pendingTotpSecret?: string
 }
 
 if (!process.env.SESSION_SECRET) {

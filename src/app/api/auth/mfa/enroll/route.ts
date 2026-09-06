@@ -19,9 +19,13 @@ export async function GET() {
   const otpauthUrl = generateURI({ issuer: 'Community Wellness Point', label: partner.email, secret })
 
   session.pendingPartnerId = partner.id
+  session.pendingTotpSecret = secret
   await session.save()
 
-  // secret is re-derived and persisted only after successful verification (Step 4)
+  // The secret is held server-side in the session and persisted only after
+  // successful verification (see POST below). It is also returned here so
+  // the browser can render the QR code / manual-entry key, but the server
+  // never trusts a secret submitted back by the client.
   return NextResponse.json({ secret, otpauthUrl })
 }
 
@@ -36,19 +40,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Already enrolled' }, { status: 409 })
   }
 
-  const { secret, token } = await request.json()
-  const { valid } = await verify({ token, secret })
+  const pendingSecret = session.pendingTotpSecret
+  if (!pendingSecret) {
+    return NextResponse.json({ error: 'No pending enrollment secret. Restart enrollment.' }, { status: 400 })
+  }
+
+  const { token } = await request.json()
+  const { valid } = await verify({ token, secret: pendingSecret })
   if (!valid) {
     return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
   }
 
   await prisma.brandPartner.update({
     where: { id: session.pendingPartnerId },
-    data: { totpSecretEnc: encryptSecret(secret), totpEnabledAt: new Date() },
+    data: { totpSecretEnc: encryptSecret(pendingSecret), totpEnabledAt: new Date() },
   })
 
   session.partnerId = session.pendingPartnerId
   delete session.pendingPartnerId
+  delete session.pendingTotpSecret
   await session.save()
 
   return NextResponse.json({ nextStep: 'done' })

@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
   const session = await getSession()
   session.pendingPartnerId = partner.id
   delete session.partnerId
+  delete session.pendingTotpSecret
   await session.save()
 
   const nextStep = resolveNextLoginStep(partner)

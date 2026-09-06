@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
 
   session.partnerId = partner.id
   delete session.pendingPartnerId
+  delete session.pendingTotpSecret
   await session.save()
 
   return NextResponse.json({ nextStep: 'done' })

@@ -74,6 +74,25 @@ describe('self-lockout protection on manageRoles', () => {
     )
   })
 
+  it('PATCH: editing own role with manageRoles omitted entirely returns 409 and leaves permissions unchanged', async () => {
+    const ownRole = await createRole({ permissions: { manageRoles: true, exportData: true } })
+    const admin = await createPartner({ roleId: ownRole.id })
+    setSessionPartner(admin.id)
+
+    // permissions.manageRoles is omitted, not sent as false — a naive
+    // `permissions.manageRoles === false` check would miss this.
+    const res = await patch(ownRole.id, {
+      name: ownRole.name,
+      permissions: { exportData: true },
+    })
+    expect(res.status).toBe(409)
+
+    const stillThere = await prisma.role.findUnique({ where: { id: ownRole.id } })
+    expect(stillThere!.permissions).toEqual(
+      expect.objectContaining({ manageRoles: true, exportData: true })
+    )
+  })
+
   it('PATCH: editing own role while keeping manageRoles true succeeds', async () => {
     const ownRole = await createRole({ permissions: { manageRoles: true } })
     const admin = await createPartner({ roleId: ownRole.id })

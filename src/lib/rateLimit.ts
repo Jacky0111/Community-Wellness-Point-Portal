@@ -18,8 +18,25 @@ export function isLocked(lockedUntil: Date | null, now: Date = new Date()): bool
   return lockedUntil.getTime() > now.getTime()
 }
 
-export function nextFailureState(currentAttempts: number, now: Date = new Date()): FailureState {
-  const attempts = currentAttempts + 1
+/**
+ * Computes the next failure-count state after another bad attempt.
+ *
+ * `currentLockedUntil` is the lock the previous attempt (if any) set. If
+ * that lock has already expired by `now`, the attempt count is treated as
+ * reset to 0 before incrementing — otherwise a user who genuinely forgot
+ * their password would re-lock on their very first attempt after every
+ * lockout window, forever. A lock that is still active is not reachable
+ * here in practice (callers check `isLocked` first and refuse the attempt
+ * outright), but is handled the same way for safety.
+ */
+export function nextFailureState(
+  currentAttempts: number,
+  currentLockedUntil: Date | null = null,
+  now: Date = new Date()
+): FailureState {
+  const lockHasExpired = currentLockedUntil !== null && !isLocked(currentLockedUntil, now)
+  const baseAttempts = lockHasExpired ? 0 : currentAttempts
+  const attempts = baseAttempts + 1
   const lockedUntil = attempts >= MAX_ATTEMPTS ? new Date(now.getTime() + LOCKOUT_DURATION_MS) : null
   return { attempts, lockedUntil }
 }

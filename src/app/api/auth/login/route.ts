@@ -21,7 +21,10 @@ export async function POST(request: NextRequest) {
   }
 
   if (!(await verifyPassword(password, partner.passwordHash))) {
-    const { attempts, lockedUntil } = nextFailureState(partner.failedPasswordAttempts)
+    const { attempts, lockedUntil } = nextFailureState(
+      partner.failedPasswordAttempts,
+      partner.passwordLockedUntil
+    )
     await prisma.brandPartner.update({
       where: { id: partner.id },
       data: { failedPasswordAttempts: attempts, passwordLockedUntil: lockedUntil },

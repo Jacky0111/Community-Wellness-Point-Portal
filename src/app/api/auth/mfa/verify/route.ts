@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const secret = decryptSecret(partner.totpSecretEnc)
   const { valid } = await verify({ token, secret })
   if (!valid) {
-    const { attempts, lockedUntil } = nextFailureState(partner.failedTotpAttempts)
+    const { attempts, lockedUntil } = nextFailureState(partner.failedTotpAttempts, partner.totpLockedUntil)
     await prisma.brandPartner.update({
       where: { id: partner.id },
       data: { failedTotpAttempts: attempts, totpLockedUntil: lockedUntil },

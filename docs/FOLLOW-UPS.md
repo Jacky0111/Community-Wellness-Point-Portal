@@ -6,18 +6,24 @@ undone, and what must be closed before real client health data is stored.
 Nothing here is a bug in the delivered scope — each item was either an explicit
 owner decision or a finding triaged during the final whole-branch review.
 
+## Completed
+
+**TOTP secrets are now encrypted at rest.** `BrandPartner.totpSecretEnc` is
+AES-256-GCM encrypted via `src/lib/crypto.ts` (`ENCRYPTION_KEY`, random IV per
+value, `v1:` self-describing format). Legacy plaintext values from before this
+change are detected and lazily re-encrypted on next successful login;
+`scripts/encrypt-totp-secrets.ts` bulk-migrates any that are never logged in
+with.
+
+**Login and MFA verification are now rate limited.** Both routes lock an
+account for 15 minutes after 5 failed attempts (`src/lib/rateLimit.ts`,
+DB-backed via new `BrandPartner` counter/lockedUntil columns so it works across
+serverless instances). Returns 429 while locked; a correct TOTP code submitted
+during a lockout still does not promote the session.
+
 ## Must fix before real client data
 
-**TOTP secrets are stored unencrypted.**
-`BrandPartner.totpSecretEnc` holds the raw base32 secret despite the `Enc`
-suffix. A read-only database leak or a stray backup hands an attacker a working
-second factor for every account, permanently. Encrypt with an application key,
-or rename the column so the next reader is not misled about what protects it.
-
-**No rate limiting on login or MFA verification.**
-A 6-digit TOTP is one million guesses with no lockout, and password attempts are
-unthrottled too. This is the item most likely to actually be exploited on an
-internet-reachable deployment. Add at least a per-IP and per-account attempt cap.
+_(nothing currently — see Completed above)_
 
 ## Should fix soon
 
@@ -72,7 +78,13 @@ as it stands an administrator can grant a capability that silently has no effect
    the direct `:5432` connection, which exhausts Postgres connections under
    serverless load. (Note: `?pgbouncer=true` is a Prisma-query-engine flag and is
    ignored under Prisma 7 with `@prisma/adapter-pg` — the port is what matters.)
-3. Set `SESSION_SECRET` in Vercel to 32+ random characters.
+3. Set `SESSION_SECRET` (32+ random characters) **and** `ENCRYPTION_KEY` (64
+   hex characters / 32 bytes — generate with `openssl rand -hex 32`) in
+   Vercel. **Both must be set before the first deploy, not after:**
+   `src/lib/crypto.ts` throws at module load if `ENCRYPTION_KEY` is missing
+   or malformed, which is on the import graph of both MFA routes — since MFA
+   is mandatory, that fails every login closed for every existing user, not
+   just new enrollments.
 4. Run `npx prisma db push` then `npx prisma db seed` once against the Supabase
    database. Without this the app deploys but every query fails — no tables exist.
 5. Log in as the seeded owner and **change the password immediately**.

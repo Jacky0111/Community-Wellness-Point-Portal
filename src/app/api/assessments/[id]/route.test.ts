@@ -133,16 +133,30 @@ describe('DELETE /api/assessments/[id]', () => {
     expect(stillThere.deletedByPartnerId).toBeNull()
   })
 
-  it('deleting an already-deleted record returns 404', async () => {
+  it('deleting an already-deleted record returns 404 and leaves the audit trail untouched', async () => {
     const role = await createRole({ permissions: { deleteRecords: true, viewAllAssessments: true } })
     const me = await createPartner({ roleId: role.id })
+    const other = await createPartner({ roleId: role.id })
     const assessment = await createAssessment({ handledByPartnerId: me.id })
     setSessionPartner(me.id)
 
     const first = await del(assessment.id)
     expect(first.status).toBe(200)
 
+    const afterFirst = await prisma.assessment.findUniqueOrThrow({ where: { id: assessment.id } })
+    expect(afterFirst.deletedAt).not.toBeNull()
+    expect(afterFirst.deletedByPartnerId).toBe(me.id)
+
+    // A *different* partner attempts the second delete, so a reattribution
+    // bug (e.g. the already-deleted short-circuit running after the write
+    // instead of before it) would visibly rewrite deletedByPartnerId to
+    // `other.id` rather than coincidentally leaving it unchanged.
+    setSessionPartner(other.id)
     const second = await del(assessment.id)
     expect(second.status).toBe(404)
+
+    const afterSecond = await prisma.assessment.findUniqueOrThrow({ where: { id: assessment.id } })
+    expect(afterSecond.deletedAt).toEqual(afterFirst.deletedAt)
+    expect(afterSecond.deletedByPartnerId).toBe(me.id)
   })
 })

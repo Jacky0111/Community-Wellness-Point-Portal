@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateSecret, generateURI, verify } from 'otplib'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
+import { encryptSecret } from '@/lib/crypto'
 
 export async function GET() {
   const session = await getSession()
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   await prisma.brandPartner.update({
     where: { id: session.pendingPartnerId },
-    data: { totpSecretEnc: secret, totpEnabledAt: new Date() },
+    data: { totpSecretEnc: encryptSecret(secret), totpEnabledAt: new Date() },
   })
 
   session.partnerId = session.pendingPartnerId

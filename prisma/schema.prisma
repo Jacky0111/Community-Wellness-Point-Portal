@@ -26,6 +26,10 @@ model BrandPartner {
   totpSecretEnc      String?
   totpEnabledAt      DateTime?
   isActive           Boolean   @default(true)
+  failedPasswordAttempts Int       @default(0)
+  passwordLockedUntil    DateTime?
+  failedTotpAttempts     Int       @default(0)
+  totpLockedUntil        DateTime?
   roleId             String
   role               Role      @relation(fields: [roleId], references: [id])
   createdAt          DateTime  @default(now())

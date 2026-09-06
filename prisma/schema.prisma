@@ -62,9 +62,12 @@ model Assessment {
   handledByPartner   BrandPartner @relation("HandledByPartner", fields: [handledByPartnerId], references: [id])
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @default(now()) @updatedAt
+  deletedAt          DateTime?
+  deletedByPartnerId String?
 
   @@index([name])
   @@index([contactNumber])
   @@index([date])
   @@index([handledByPartnerId])
+  @@index([deletedAt])
 }

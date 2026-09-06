@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Table, Button, Card, Space, Tooltip } from 'antd'
-import { DownloadOutlined } from '@ant-design/icons'
+import { Table, Button, Card, Space, Tooltip, Popconfirm, Alert } from 'antd'
+import { DownloadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { ResultsFilters, type ResultsFilterValue } from './ResultsFilters'
 import { BRAND } from '@/lib/theme'
 import { redirectIfUnauthorized } from '@/lib/clientAuth'
@@ -22,6 +22,8 @@ interface AssessmentRow {
 export interface ResultsTableProps {
   /** Whether the current partner's role has `exportData`. Controls the Export button. */
   canExport: boolean
+  /** Whether the current partner's role has `deleteRecords`. Controls the per-row Delete action. */
+  canDelete: boolean
 }
 
 // Keeps typing in the search box from firing a request per keystroke — the raw
@@ -29,12 +31,17 @@ export interface ResultsTableProps {
 // value used to build the query string trails behind it by this delay.
 const SEARCH_DEBOUNCE_MS = 300
 
-export function ResultsTable({ canExport }: ResultsTableProps) {
+export function ResultsTable({ canExport, canDelete }: ResultsTableProps) {
   const router = useRouter()
   const [rows, setRows] = useState<AssessmentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<ResultsFilterValue>({ search: '', dateRange: null })
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  // Bumped after a successful delete to re-trigger the fetch below without
+  // adding a second, easy-to-duplicate copy of the fetch/redirect/loading logic.
+  const [refreshToken, setRefreshToken] = useState(0)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(filters.search), SEARCH_DEBOUNCE_MS)
@@ -72,7 +79,24 @@ export function ResultsTable({ canExport }: ResultsTableProps) {
     return () => {
       ignore = true
     }
-  }, [queryString])
+  }, [queryString, refreshToken])
+
+  const handleDelete = async (id: string) => {
+    setDeleteError(null)
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/assessments/${id}`, { method: 'DELETE' })
+      if (redirectIfUnauthorized(res, router)) return
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setDeleteError(typeof data.error === 'string' ? data.error : 'Could not delete record')
+        return
+      }
+      setRefreshToken((t) => t + 1)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const exportButton = (
     <Button icon={<DownloadOutlined />} href={`/api/assessments/export?${queryString}`} disabled={!canExport}>
@@ -85,6 +109,15 @@ export function ResultsTable({ canExport }: ResultsTableProps) {
       style={{ borderRadius: BRAND.cardRadius }}
       styles={{ body: { padding: 24 } }}
     >
+      {deleteError && (
+        <Alert
+          type="error"
+          message={deleteError}
+          closable
+          onClose={() => setDeleteError(null)}
+          style={{ marginBottom: 16 }}
+        />
+      )}
       <Space
         style={{ marginBottom: 16, justifyContent: 'space-between', width: '100%' }}
         wrap
@@ -116,6 +149,33 @@ export function ResultsTable({ canExport }: ResultsTableProps) {
               r.systolicBp && r.diastolicBp ? `${r.systolicBp}/${r.diastolicBp}` : '-',
           },
           { title: 'Handled By', dataIndex: ['handledByPartner', 'name'] },
+          ...(canDelete
+            ? [
+                {
+                  title: 'Actions',
+                  render: (_: unknown, r: AssessmentRow) => (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Popconfirm
+                        title="Delete this record?"
+                        description="This removes the record from Results. It is not permanently destroyed and can be recovered by an administrator."
+                        okText="Delete"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={() => handleDelete(r.id)}
+                      >
+                        <Button
+                          danger
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          loading={deletingId === r.id}
+                        >
+                          Delete
+                        </Button>
+                      </Popconfirm>
+                    </div>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </Card>

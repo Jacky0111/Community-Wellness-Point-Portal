@@ -7,6 +7,7 @@ export default async function ResultPage() {
   if (!partner) redirect('/login')
 
   const canExport = requirePermission(partner, 'exportData')
+  const canDelete = requirePermission(partner, 'deleteRecords')
 
-  return <ResultsTable canExport={canExport} />
+  return <ResultsTable canExport={canExport} canDelete={canDelete} />
 }

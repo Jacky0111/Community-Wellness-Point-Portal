@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { buildAssessmentWhere } from './assessmentQuery'
 
 describe('buildAssessmentWhere', () => {
+  it('always excludes soft-deleted rows', () => {
+    const where = buildAssessmentWhere({}, { currentPartnerId: 'p1', canViewAll: true })
+    expect(where.deletedAt).toBeNull()
+  })
+
   it('scopes to the current partner when canViewAll is false', () => {
     const where = buildAssessmentWhere({}, { currentPartnerId: 'p1', canViewAll: false })
     expect(where.handledByPartnerId).toBe('p1')

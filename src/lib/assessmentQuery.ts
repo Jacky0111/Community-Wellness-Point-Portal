@@ -16,7 +16,7 @@ export function buildAssessmentWhere(
   filters: AssessmentFilters,
   ctx: QueryContext
 ): Prisma.AssessmentWhereInput {
-  const where: Prisma.AssessmentWhereInput = {}
+  const where: Prisma.AssessmentWhereInput = { deletedAt: null }
 
   if (!ctx.canViewAll) {
     where.handledByPartnerId = ctx.currentPartnerId

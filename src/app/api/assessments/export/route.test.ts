@@ -4,6 +4,7 @@ vi.mock('@/lib/session', () => import('@/test/sessionMock'))
 
 import { NextRequest } from 'next/server'
 import ExcelJS from 'exceljs'
+import { prisma } from '@/lib/prisma'
 import { resetDb, createRole, createPartner, createAssessment } from '@/test/db'
 import { setSessionPartner, clearSession } from '@/test/sessionMock'
 import { GET } from '@/app/api/assessments/export/route'
@@ -89,5 +90,21 @@ describe('GET /api/assessments/export', () => {
     )
     expect(res.status).toBe(200)
     expect(await namesInWorkbook(res)).toEqual(['MyClient'])
+  })
+
+  it('excludes soft-deleted rows', async () => {
+    const role = await createRole({ permissions: { exportData: true, viewAllAssessments: true } })
+    const me = await createPartner({ roleId: role.id })
+    await createAssessment({ handledByPartnerId: me.id, name: 'Visible' })
+    const deleted = await createAssessment({ handledByPartnerId: me.id, name: 'Deleted' })
+    await prisma.assessment.update({
+      where: { id: deleted.id },
+      data: { deletedAt: new Date(), deletedByPartnerId: me.id },
+    })
+
+    setSessionPartner(me.id)
+    const res = await GET(new NextRequest('http://localhost/api/assessments/export'))
+    expect(res.status).toBe(200)
+    expect(await namesInWorkbook(res)).toEqual(['Visible'])
   })
 })

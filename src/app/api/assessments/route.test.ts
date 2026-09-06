@@ -84,6 +84,25 @@ describe('GET /api/assessments — row scoping', () => {
     const res = await GET(req('http://localhost/api/assessments'))
     expect(res.status).toBe(401)
   })
+
+  it('excludes soft-deleted rows', async () => {
+    const role = await createRole({ permissions: { viewAllAssessments: true } })
+    const me = await createPartner({ roleId: role.id })
+    const visible = await createAssessment({ handledByPartnerId: me.id, name: 'Visible' })
+    const deleted = await createAssessment({ handledByPartnerId: me.id, name: 'Deleted' })
+    await prisma.assessment.update({
+      where: { id: deleted.id },
+      data: { deletedAt: new Date(), deletedByPartnerId: me.id },
+    })
+
+    setSessionPartner(me.id)
+    const res = await GET(req('http://localhost/api/assessments'))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.assessments).toHaveLength(1)
+    expect(body.assessments[0].id).toBe(visible.id)
+  })
 })
 
 describe('POST /api/assessments', () => {

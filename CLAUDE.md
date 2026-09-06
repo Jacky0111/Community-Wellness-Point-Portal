@@ -16,8 +16,21 @@ Read it before making architectural changes.
 
 ## Commands
 
-Not yet implemented — this file will be updated with `npm run dev`/`build`/`test`/etc.
-once the project is scaffolded (Next.js + TypeScript + Prisma).
+Not yet fully documented — this file will be updated with `npm run dev`/`build`/`test`/etc.
+as the project settles.
+
+**Schema changes** go through Prisma Migrate, not `prisma db push`:
+
+- Local schema change: `npx prisma migrate dev --name <description>` against your local
+  dev database. This writes a new timestamped folder under `prisma/migrations/` — commit
+  it.
+- Deploying a schema change to production: apply migrations **manually**, before the
+  code that depends on them ships — `npx prisma migrate deploy` run with `DATABASE_URL`
+  pointed at Supabase's **session pooler (port `5432`)**. This is never run automatically
+  by the Vercel build (see Gotchas below for why).
+- `prisma db push` must not be used on any database that has migrations applied
+  (production, local dev, local test) — it bypasses migration history and can drift it
+  out of sync with the database.
 
 ## Architecture
 
@@ -72,6 +85,15 @@ is designed separately. Bulk Excel export of filtered Results *is* in scope for 
   The `?pgbouncer=true` query flag some Supabase docs add alongside it is interpreted by
   Prisma's own query engine; under Prisma 7 with `@prisma/adapter-pg`, the connection
   string goes to node-postgres instead, which ignores that flag, so it can be omitted.
+- **The transaction pooler (`:6543`) cannot run migrations.** Prisma 7's
+  `prisma.config.ts` datasource supports only `url` and `shadowDatabaseUrl` — there is
+  no `directUrl` — so the CLI resolves the same `DATABASE_URL` the app runtime uses.
+  Production's Vercel `DATABASE_URL` is the transaction pooler, and attempting a schema
+  push or migration over it hangs indefinitely (this cost real debugging time — don't
+  rediscover it). Migrations against Supabase must be run manually with `DATABASE_URL`
+  pointed at the **session pooler on port `5432`** instead, and are never applied
+  automatically during the Vercel build (no `prisma migrate deploy` in the `build`
+  script) — schema changes should not auto-apply on every git push.
 - Don't import password-hashing code (bcrypt) into anything on the Edge middleware's
   import graph — bcryptjs needs Node APIs unavailable in a real Edge runtime.
 - **CWP-specific, not from Bluestorm:** `antd@5.x` requires `@ant-design/cssinjs@^1.x`

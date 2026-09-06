@@ -21,6 +21,20 @@ DB-backed via new `BrandPartner` counter/lockedUntil columns so it works across
 serverless instances). Returns 429 while locked; a correct TOTP code submitted
 during a lockout still does not promote the session.
 
+**Database migrations now use Prisma Migrate, not `prisma db push`.** An
+`0_init` migration captures the schema as it existed under `db push` (all
+columns and indexes added so far, including the rate-limit fields and the
+soft-delete columns), baselined as already-applied against the existing local
+dev and test databases — it was never executed against them. From here,
+schema changes go through `npx prisma migrate dev` locally, and migrations are
+applied to production **manually** via `npx prisma migrate deploy` run with
+`DATABASE_URL` pointed at the **session pooler (port `5432`)**, before the code
+that depends on them ships — never automatically from the Vercel build, and
+never over the transaction pooler (port `6543`), which cannot run migrations
+(see the deployment checklist below). `prisma db push` should no longer be run
+against any database that has migrations applied — it bypasses the migration
+history and risks drifting it out of sync.
+
 ## Must fix before real client data
 
 _(nothing currently — see Completed above)_
@@ -47,11 +61,6 @@ it via `PATCH /api/roles/[id]`. The `isSystemDefault` guard protects only the se
 Owner role. Recovery from a full lockout is direct SQL.
 
 ## Decisions needed from the project owner
-
-**Database migrations.** The project deliberately uses `prisma db push` with no
-`prisma/migrations/` directory. This means the first production deploy needs a
-manual `db push`, and every later schema change is an unrecorded, un-rollbackable
-push. Fine for a small internal tool; worth revisiting before real data exists.
 
 **The `deleteRecords` permission does nothing.** It is grantable and labelled
 "Delete records" in the Settings UI, but no delete endpoint exists for
@@ -85,9 +94,21 @@ as it stands an administrator can grant a capability that silently has no effect
    or malformed, which is on the import graph of both MFA routes — since MFA
    is mandatory, that fails every login closed for every existing user, not
    just new enrollments.
-4. Run `npx prisma db push` then `npx prisma db seed` once against the Supabase
-   database. Without this the app deploys but every query fails — no tables exist.
-5. Log in as the seeded owner and **change the password immediately**.
+4. Before the first deploy, apply migrations against Supabase manually:
+   `DATABASE_URL=<session pooler, port 5432> npx prisma migrate deploy`, then
+   `npx prisma db seed` once with the same `DATABASE_URL`. **Do not** point
+   `migrate deploy` at the port `:6543` transaction pooler used by Vercel's
+   runtime `DATABASE_URL` — the transaction pooler cannot run migrations; a
+   `db push` attempted over it hung indefinitely during development, and
+   `migrate deploy` would be expected to do the same. Without this step the
+   app deploys but every query fails — no tables exist.
+5. For every later schema change: run `npx prisma migrate dev --name
+   <description>` locally to create and apply the migration against your local
+   database, commit the new `prisma/migrations/` folder, then before the
+   dependent code ships, run `npx prisma migrate deploy` by hand against the
+   Supabase session pooler (port `5432`) as in step 4. Migrations are **not**
+   applied automatically by the Vercel build.
+6. Log in as the seeded owner and **change the password immediately**.
 
 Note that `prisma/seed.ts` uses `update: {}` in its upserts, so re-running the seed
 will not repair a modified or deactivated owner account.
